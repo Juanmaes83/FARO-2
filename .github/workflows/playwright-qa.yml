@@ -15,9 +15,10 @@ jobs:
     steps:
       - name: Checkout candidate
         uses: actions/checkout@v4
-      - name: Checkout frozen Faro baseline
+      - name: Checkout frozen Faro baseline from source repository
         uses: actions/checkout@v4
         with:
+          repository: Juanmaes83/MASTER-CLASS-HISTORIA-FARO-MEMORIA
           ref: be966615347e8844bfcddf30034dd2b2a2c8330c
           path: _frozen
       - uses: actions/setup-node@v4
