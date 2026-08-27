@@ -1,5 +1,5 @@
 /* BLOCK 1 — direct Kage foreground-system port. Geometry differs; lifecycle and near-plane behaviour do not. */
-.fg{position:absolute;inset:0;z-index:3;overflow:visible;pointer-events:none}
+.fg{position:absolute;inset:0;z-index:3;overflow:clip;pointer-events:none}
 /* Kage host: deliberately zero-sized. Active stages are fixed to the viewport, so the host must not clip them. */
 #fg-sky{position:fixed;left:0;top:0;width:0;height:0;right:auto;bottom:auto;z-index:52;pointer-events:none;overflow:visible}
 .sec>*:not(.fg),.foot>*:not(.fg){position:relative;z-index:2}
