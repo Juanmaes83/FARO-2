@@ -9,7 +9,13 @@ async function ready(page){
   await page.waitForTimeout(500);
 }
 async function own(page,id){
-  await page.evaluate(id=>document.getElementById(id)?.scrollIntoView({block:'center',behavior:'auto'}),id);
+  await page.evaluate(id=>{
+    const e=document.getElementById(id);
+    if(!e)return;
+    const r=e.getBoundingClientRect();
+    const top=scrollY+r.top+(r.height-innerHeight)/2;
+    scrollTo(0,Math.max(0,top));
+  },id);
   await page.waitForFunction(id=>document.querySelector(`#fg-sky [data-fg="${id}"].fg-active`)!==null,id,{timeout:5000});
   await page.waitForTimeout(350);
 }
