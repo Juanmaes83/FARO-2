@@ -1,0 +1,271 @@
+name: Block 1 Bootstrap — Kage Foreground Port
+
+on:
+  push:
+    branches: [block-1-kage-foreground]
+    paths:
+      - '.github/workflows/block1-bootstrap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  port:
+    if: ${{ !contains(github.event.head_commit.message || '', '[block1-sync]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout FARO-2
+        uses: actions/checkout@v4
+        with:
+          ref: block-1-kage-foreground
+          fetch-depth: 0
+
+      - name: Fetch approved Faro and Kage donor
+        run: |
+          git clone https://github.com/Juanmaes83/MASTER-CLASS-HISTORIA-FARO-MEMORIA.git /tmp/faro-source
+          git -C /tmp/faro-source checkout 9113e5c3227fa569088e8b71076b1707872f9142
+          git clone --depth 1 https://github.com/Juanmaes83/kage.git /tmp/kage-donor
+
+      - name: Import approved Faro base without experimental PR 9
+        run: |
+          rsync -a \
+            --exclude='.git' \
+            --exclude='KAGE-TO-FARO-MASTER-ROADMAP.md' \
+            /tmp/faro-source/ ./
+          mkdir -p assets/foreground/atlantic
+
+      - name: Build Atlantic alpha WebP library from Kage donor
+        run: |
+          python -m pip install --quiet pillow
+          python <<'PY'
+          from PIL import Image, ImageEnhance, ImageFilter, ImageDraw
+          from pathlib import Path
+          import random, json, math
+
+          donor=Path('/tmp/kage-donor/secret-pathways-assets/foreground/png')
+          out=Path('assets/foreground/atlantic'); out.mkdir(parents=True,exist_ok=True)
+
+          def load(name):
+              return Image.open(donor/name).convert('RGBA')
+          def save(im,name):
+              im.save(out/name,'WEBP',lossless=True,quality=94,method=6)
+
+          # Direct donor geology: already alpha-trimmed and visually proven in Kage.
+          basalt=load('basalt-stones.webp')
+          basalt=ImageEnhance.Color(basalt).enhance(.80)
+          basalt=ImageEnhance.Brightness(basalt).enhance(.78)
+          save(basalt,'coastal-basalt.webp')
+
+          # Wet variant: same silhouette family, darker body and restrained cool highlights.
+          wet=basalt.copy(); px=wet.load()
+          for y in range(wet.height):
+              for x in range(wet.width):
+                  r,g,b,a=px[x,y]
+                  if not a: continue
+                  lum=(r+g+b)/3
+                  sheen=max(0,(lum-42)/150)
+                  px[x,y]=(int(r*.72+24*sheen),int(g*.78+34*sheen),int(b*.82+38*sheen),a)
+          wet=ImageEnhance.Contrast(wet).enhance(1.12)
+          save(wet,'wet-rocks.webp')
+
+          grass=load('tall-grass.webp')
+          grass=ImageEnhance.Color(grass).enhance(.62)
+          grass=ImageEnhance.Brightness(grass).enhance(.72)
+          save(grass,'coastal-grass.webp')
+
+          cliff=load('hill.webp')
+          cliff=ImageEnhance.Color(cliff).enhance(.55)
+          cliff=ImageEnhance.Brightness(cliff).enhance(.58)
+          cliff=ImageEnhance.Contrast(cliff).enhance(1.15)
+          save(cliff,'cliff-edge.webp')
+          save(cliff.copy(),'distant-headland.webp')
+
+          wall=load('temple-wall.webp')
+          wall=ImageEnhance.Color(wall).enhance(.18)
+          wall=ImageEnhance.Brightness(wall).enhance(.62)
+          wall=ImageEnhance.Contrast(wall).enhance(1.10)
+          save(wall,'lighthouse-wall-fragment.webp')
+
+          # Sea spray: genuine transparent artwork, not CSS. Several depth populations
+          # are baked into one alpha plate; only the lightest droplets are allowed high alpha.
+          W,H=1800,1050
+          spray=Image.new('RGBA',(W,H),(0,0,0,0)); d=ImageDraw.Draw(spray,'RGBA')
+          rnd=random.Random(430278)
+          for band,count in [(0,1250),(1,520),(2,180)]:
+              for i in range(count):
+                  t=rnd.random()**1.8
+                  x=rnd.randint(0,W-1)
+                  base=H*(.70 if band==0 else .60 if band==1 else .50)
+                  y=int(base + rnd.gauss(0,H*(.10+.025*band)) - t*H*.20)
+                  rr=rnd.uniform(.7,2.8)*(1+.45*band)
+                  alpha=int(rnd.uniform(18,65)*(1-.13*band))
+                  col=(174,205,207,alpha)
+                  d.ellipse((x-rr,y-rr*.55,x+rr,y+rr*.55),fill=col)
+          for i in range(45):
+              x=rnd.randint(-100,W); y=rnd.randint(int(H*.58),int(H*.91))
+              w=rnd.randint(80,300); h=rnd.randint(10,42)
+              pts=[]
+              for k in range(14):
+                  xx=x+w*k/13; yy=y+math.sin(k*.7+rnd.random())*h*.35-rnd.random()*h
+                  pts.append((xx,yy))
+              d.line(pts,fill=(164,198,201,rnd.randint(16,38)),width=rnd.randint(1,3))
+          spray=spray.filter(ImageFilter.GaussianBlur(.55))
+          save(spray,'sea-spray.webp')
+
+          manifest={
+            'donor':'Juanmaes83/kage',
+            'strategy':'Kage alpha-preserving near-plane assets adapted for Atlantic Faro',
+            'assets':{
+              'coastal-basalt.webp':'basalt-stones.webp — dark/cool Atlantic grade',
+              'wet-rocks.webp':'derived from donor basalt silhouette with wet tonal response',
+              'coastal-grass.webp':'tall-grass.webp — desaturated coastal grade',
+              'cliff-edge.webp':'hill.webp — near-plane cliff grade',
+              'distant-headland.webp':'hill.webp — catalogued for later world-depth use',
+              'lighthouse-wall-fragment.webp':'temple-wall.webp — architectural neutralisation',
+              'sea-spray.webp':'new deterministic alpha artwork generated for Faro'
+            }
+          }
+          (out/'MANIFEST.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
+          PY
+
+      - name: Port Kage near-plane CSS with Faro-specific placement
+        run: |
+          cat > foreground-kage-port.css <<'CSS'
+          /* BLOCK 1 — direct Kage foreground-system port. Geometry differs; lifecycle and near-plane behaviour do not. */
+          .fg{position:absolute;inset:0;z-index:3;overflow:visible;pointer-events:none}
+          #fg-sky{position:fixed;left:0;top:0;width:0;height:0;z-index:52;pointer-events:none}
+          .sec>*:not(.fg),.foot>*:not(.fg){position:relative;z-index:2}
+          .fg-el{position:absolute;display:block;opacity:0}
+          .fg-el>img{width:100%;height:auto;display:block;opacity:1;filter:saturate(.88) brightness(.86)}
+          [data-fg-in="up"]{transform:translate3d(0,13%,0)}
+          [data-fg-in="left"]{transform:translate3d(-11%,6%,0)}
+          [data-fg-in="right"]{transform:translate3d(11%,6%,0)}
+          @keyframes faro-fg-sway{from{transform:rotate(-.45deg) translate3d(0,2px,0)}to{transform:rotate(.45deg) translate3d(0,-6px,0)}}
+          .fg-el--sway>img{animation:faro-fg-sway 21s cubic-bezier(.65,0,.35,1) infinite alternate;transform-origin:0% 45%}
+          .fg.fg-active,.fg.fg-retiring{position:fixed;left:0;right:0;top:auto;bottom:0;height:min(56svh,680px);z-index:1;overflow:visible;pointer-events:none}
+          .fg.fg-active .fg-el{opacity:1;transform:none;transition:opacity 1.2s cubic-bezier(.16,1,.3,1),transform 1.5s cubic-bezier(.16,1,.3,1);transition-delay:var(--fg-delay,0ms)}
+          .fg .fg-el:nth-child(2){--fg-delay:90ms}.fg .fg-el:nth-child(3){--fg-delay:180ms}.fg .fg-el:nth-child(4){--fg-delay:270ms}
+          .fg.fg-retiring .fg-el{opacity:0;transform:translate3d(0,8vh,0) scale(.98);filter:blur(18px);transition:opacity .68s cubic-bezier(.16,1,.3,1),transform .78s cubic-bezier(.16,1,.3,1),filter .78s cubic-bezier(.16,1,.3,1)}
+
+          /* Faro chapter compositions — bottom anchored exactly like Kage. */
+          [data-fg="coast"] .fg-coastal-basalt{left:-4%;bottom:-58px;width:clamp(300px,36vw,610px)}
+          [data-fg="coast"] .fg-coastal-grass{right:-5%;bottom:-112px;width:clamp(390px,48vw,850px)}
+          [data-fg="coast"] .fg-sea-spray{left:7%;right:2%;bottom:-28px;width:86%;opacity:0}
+          [data-fg="coast"].fg-active .fg-sea-spray{opacity:.72}
+
+          [data-fg="keeper"] .fg-wet-rocks{left:-6%;bottom:-66px;width:clamp(270px,31vw,520px)}
+          [data-fg="keeper"] .fg-coastal-grass{right:-8%;bottom:-120px;width:clamp(360px,43vw,760px)}
+
+          [data-fg="stair"] .fg-lighthouse-wall{right:-5%;bottom:-64px;width:clamp(330px,39vw,680px)}
+
+          [data-fg="machine"] .fg-lighthouse-wall{right:-10%;bottom:-104px;width:clamp(250px,29vw,500px);opacity:0}
+          [data-fg="machine"].fg-active .fg-lighthouse-wall{opacity:.84}
+
+          [data-fg="beam"] .fg-cliff-edge{left:-8%;bottom:-96px;width:clamp(430px,51vw,920px)}
+          [data-fg="beam"] .fg-sea-spray{right:-9%;bottom:-30px;width:74%;opacity:0}
+          [data-fg="beam"].fg-active .fg-sea-spray{opacity:.64}
+
+          [data-fg="afterlight"] .fg-wet-rocks{left:-7%;bottom:-88px;width:clamp(270px,31vw,540px)}
+          [data-fg="afterlight"] .fg-coastal-grass{right:-9%;bottom:-114px;width:clamp(360px,43vw,760px)}
+
+          @media(max-width:820px){
+            [data-fg="coast"] .fg-sea-spray,[data-fg="keeper"] .fg-coastal-grass,[data-fg="machine"] .fg-lighthouse-wall,[data-fg="beam"] .fg-sea-spray,[data-fg="afterlight"] .fg-wet-rocks{display:none}
+            [data-fg="coast"] .fg-coastal-basalt{left:-13%;bottom:-38px;width:min(77vw,420px)}
+            [data-fg="coast"] .fg-coastal-grass{right:-16%;bottom:-74px;width:min(88vw,490px)}
+            [data-fg="keeper"] .fg-wet-rocks{left:-15%;bottom:-36px;width:min(68vw,360px)}
+            [data-fg="stair"] .fg-lighthouse-wall{right:-18%;bottom:-34px;width:min(76vw,430px)}
+            [data-fg="beam"] .fg-cliff-edge{left:-18%;bottom:-46px;width:min(86vw,480px)}
+            [data-fg="afterlight"] .fg-coastal-grass{right:-17%;bottom:-62px;width:min(86vw,470px)}
+          }
+          @media(prefers-reduced-motion:reduce){.fg-el--sway>img{animation:none}.fg.fg-retiring .fg-el{transition:none!important;filter:none!important}}
+          CSS
+
+      - name: Replace synthetic Faro foregrounds with real alpha artwork
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          p=Path('storytelling.html'); s=p.read_text(encoding='utf-8')
+          s=s.replace('<link rel="stylesheet" href="storytelling.css">','<link rel="stylesheet" href="storytelling.css">\n<link rel="stylesheet" href="foreground-kage-port.css">')
+          stages={
+          '<div class="fg" data-fg="coast"><span class="fg-el fg-rock" data-fg-in="left"></span><span class="fg-el fg-grass" data-fg-in="up"></span></div>':
+          '<div class="fg" data-fg="coast"><span class="fg-el fg-coastal-basalt" data-fg-in="left"><img src="assets/foreground/atlantic/coastal-basalt.webp" alt="" aria-hidden="true"></span><span class="fg-el fg-coastal-grass fg-el--sway" data-fg-in="up"><img src="assets/foreground/atlantic/coastal-grass.webp" alt="" aria-hidden="true"></span><span class="fg-el fg-sea-spray fg-el--sway" data-fg-in="right"><img src="assets/foreground/atlantic/sea-spray.webp" alt="" aria-hidden="true"></span></div>',
+          '<div class="fg" data-fg="keeper"><span class="fg-el fg-door" data-fg-in="left"></span></div>':
+          '<div class="fg" data-fg="keeper"><span class="fg-el fg-wet-rocks" data-fg-in="left"><img src="assets/foreground/atlantic/wet-rocks.webp" alt="" aria-hidden="true"></span><span class="fg-el fg-coastal-grass fg-el--sway" data-fg-in="right"><img src="assets/foreground/atlantic/coastal-grass.webp" alt="" aria-hidden="true"></span></div>',
+          '<div class="fg" data-fg="stair"><span class="fg-el fg-rail" data-fg-in="right"></span></div>':
+          '<div class="fg" data-fg="stair"><span class="fg-el fg-lighthouse-wall" data-fg-in="right"><img src="assets/foreground/atlantic/lighthouse-wall-fragment.webp" alt="" aria-hidden="true"></span></div>',
+          '<div class="fg" data-fg="machine"><span class="fg-el fg-lens" data-fg-in="right"></span></div>':
+          '<div class="fg" data-fg="machine"><span class="fg-el fg-lighthouse-wall" data-fg-in="right"><img src="assets/foreground/atlantic/lighthouse-wall-fragment.webp" alt="" aria-hidden="true"></span></div>',
+          '<div class="fg" data-fg="beam"><span class="fg-el fg-glass" data-fg-in="right"></span></div>':
+          '<div class="fg" data-fg="beam"><span class="fg-el fg-cliff-edge" data-fg-in="left"><img src="assets/foreground/atlantic/cliff-edge.webp" alt="" aria-hidden="true"></span><span class="fg-el fg-sea-spray fg-el--sway" data-fg-in="right"><img src="assets/foreground/atlantic/sea-spray.webp" alt="" aria-hidden="true"></span></div>',
+          '<div class="fg" data-fg="afterlight"><span class="fg-el fg-horizon" data-fg-in="up"></span></div>':
+          '<div class="fg" data-fg="afterlight"><span class="fg-el fg-wet-rocks" data-fg-in="left"><img src="assets/foreground/atlantic/wet-rocks.webp" alt="" aria-hidden="true"></span><span class="fg-el fg-coastal-grass fg-el--sway" data-fg-in="right"><img src="assets/foreground/atlantic/coastal-grass.webp" alt="" aria-hidden="true"></span></div>'}
+          for old,new in stages.items():
+              if old not in s: raise SystemExit('Expected approved Faro stage not found: '+old[:70])
+              s=s.replace(old,new)
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Add Block 1 visual QA
+        run: |
+          cat > tests/foreground-kage-port.spec.js <<'JS'
+          const {test,expect}=require('@playwright/test');
+          const fs=require('fs');
+          test.setTimeout(120000);
+          async function ready(page){await page.goto('/storytelling.html',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__FARO_QA__?.ready===true,null,{timeout:45000});await page.waitForTimeout(700)}
+          async function jump(page,id){await page.evaluate(id=>{const e=document.getElementById(id);scrollTo(0,e.offsetTop+Math.min(420,e.offsetHeight*.28))},id);await page.waitForTimeout(1100)}
+          test('desktop: real alpha Coast stage owns the fixed Kage near-plane',async({page})=>{fs.mkdirSync('qa-artifacts/block1',{recursive:true});await page.setViewportSize({width:1440,height:1000});await ready(page);await jump(page,'coast');const q=await page.evaluate(()=>{const sky=document.querySelector('#fg-sky'),stage=sky?.querySelector('[data-fg="coast"]');return{active:stage?.classList.contains('fg-active'),parent:stage?.parentElement?.id,imgs:[...stage?.querySelectorAll('img')||[]].map(i=>({src:i.getAttribute('src'),ok:i.complete&&i.naturalWidth>0,op:getComputedStyle(i).opacity})),fixed:stage?getComputedStyle(stage).position:null}});expect(q.active).toBeTruthy();expect(q.parent).toBe('fg-sky');expect(q.fixed).toBe('fixed');expect(q.imgs.length).toBe(3);expect(q.imgs.every(i=>i.ok&&i.op==='1')).toBeTruthy();await page.screenshot({path:'qa-artifacts/block1/coast-desktop.png'})});
+          test('foreground retires and ownership passes without duplication',async({page})=>{await page.setViewportSize({width:1440,height:1000});await ready(page);await jump(page,'coast');await jump(page,'keeper');const q=await page.evaluate(()=>({active:[...document.querySelectorAll('#fg-sky .fg-active')].map(x=>x.dataset.fg),retiring:[...document.querySelectorAll('#fg-sky .fg-retiring')].map(x=>x.dataset.fg),allActive:document.querySelectorAll('.fg-active').length}));expect(q.active).toEqual(['keeper']);expect(q.allActive).toBe(1)});
+          test('mobile: one or two anchors remain and no horizontal overflow',async({page})=>{fs.mkdirSync('qa-artifacts/block1',{recursive:true});await page.setViewportSize({width:390,height:844});await ready(page);await jump(page,'coast');const q=await page.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth,visible:[...document.querySelectorAll('#fg-sky [data-fg="coast"] .fg-el')].filter(e=>getComputedStyle(e).display!=='none').length}));expect(q.sw).toBeLessThanOrEqual(q.cw+1);expect(q.visible).toBeGreaterThanOrEqual(1);expect(q.visible).toBeLessThanOrEqual(2);await page.screenshot({path:'qa-artifacts/block1/coast-mobile.png'})});
+          JS
+          cat > .github/workflows/block1-foreground-qa.yml <<'YML'
+          name: Block 1 QA — Kage Foreground
+          on:
+            push:
+              branches: [block-1-kage-foreground]
+            pull_request:
+              branches: [main]
+          jobs:
+            foreground:
+              runs-on: ubuntu-latest
+              timeout-minutes: 15
+              steps:
+                - uses: actions/checkout@v4
+                - uses: actions/setup-node@v4
+                  with: {node-version: 24}
+                - run: |
+                    npm init -y
+                    npm install --save-dev @playwright/test@1.55.0
+                    npx playwright install --with-deps chromium
+                - run: |
+                    python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/faro2.log 2>&1 &
+                    sleep 2
+                    mkdir -p qa-artifacts/block1
+                    npx playwright test tests/foreground-kage-port.spec.js
+                - if: always()
+                  uses: actions/upload-artifact@v4
+                  with:
+                    name: block1-foreground-evidence
+                    path: qa-artifacts/block1/
+          YML
+
+      - name: Mark roadmap Block 1 in progress
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          p=Path('KAGE-TO-FARO-MASTER-ROADMAP.md'); s=p.read_text(encoding='utf-8')
+          s=s.replace('# BLOCK 1 — PORT KAGE FOREGROUND SYSTEM\n\n**STATUS: PENDING**','# BLOCK 1 — PORT KAGE FOREGROUND SYSTEM\n\n**STATUS: IN PROGRESS**')
+          s=s.replace('| 1 | Kage foreground system → Atlantic foreground system | PENDING |','| 1 | Kage foreground system → Atlantic foreground system | IN PROGRESS |')
+          marker='\n## Block 1 implementation evidence\n\n- Branch: `block-1-kage-foreground`\n- Approved Faro source: `9113e5c3227fa569088e8b71076b1707872f9142`\n- Donor: `Juanmaes83/kage`\n- Real alpha WebP library: `assets/foreground/atlantic/`\n- Dedicated QA: `.github/workflows/block1-foreground-qa.yml`\n- Status remains **IN PROGRESS** until automated QA + human visual review.\n'
+          if '## Block 1 implementation evidence' not in s: s += marker
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Commit autonomous FARO-2 implementation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m 'feat: [block1-sync] port Kage foreground system to Faro' || exit 0
+          git push origin HEAD:block-1-kage-foreground
