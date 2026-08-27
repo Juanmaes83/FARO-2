@@ -72,7 +72,7 @@ The goal is not similarity of idea. The goal is parity of visual system and prem
 
 # BLOCK 1 — PORT KAGE FOREGROUND SYSTEM
 
-**STATUS: PENDING**
+**STATUS: IN PROGRESS**
 
 Kage uses a real alpha-preserving WebP library and moves the active chapter foreground into a fixed near-plane stage `#fg-sky`.
 
@@ -449,7 +449,7 @@ Do not skip forward simply because a later block is visually tempting.
 
 | Block | Scope | Status |
 |---|---|---|
-| 1 | Kage foreground system → Atlantic foreground system | PENDING |
+| 1 | Kage foreground system → Atlantic foreground system | IN PROGRESS |
 | 2 | Keeper scene plate | PENDING |
 | 3 | Machine hole-punched viewport | PENDING |
 | 4 | Procedural coastal materiality | PENDING |
@@ -477,3 +477,12 @@ Do not skip forward simply because a later block is visually tempting.
 We are not trying to make Faro “inspired by Kage”.
 
 We are porting the visual system that already worked in Kage and adapting it faithfully to Faro until the result reaches the same premium, layered and cinematic standard.
+
+## Block 1 implementation evidence
+
+- Branch: `block-1-kage-foreground`
+- Approved Faro source: `9113e5c3227fa569088e8b71076b1707872f9142`
+- Donor: `Juanmaes83/kage`
+- Real alpha WebP library: `assets/foreground/atlantic/`
+- Dedicated QA: `.github/workflows/block1-foreground-qa.yml`
+- Status remains **IN PROGRESS** until automated QA + human visual review.
