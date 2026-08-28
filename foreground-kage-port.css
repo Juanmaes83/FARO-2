@@ -2,7 +2,7 @@
 .fg{position:absolute;inset:0;z-index:3;overflow:clip;pointer-events:none}
 /* Kage host: deliberately zero-sized. Active stages are fixed to the viewport, so the host must not clip them. */
 #fg-sky{position:fixed;left:0;top:0;width:0;height:0;right:auto;bottom:auto;z-index:52;pointer-events:none;overflow:visible}
-.sec>*:not(.fg),.foot>*:not(.fg){position:relative;z-index:2}
+/* IMPORTANT: never reposition Faro editorial children here. The donor near-plane must not change page geometry or sticky/absolute semantics. */
 .fg-el{position:absolute;display:block;opacity:0}
 .fg-el>img{width:100%;height:auto;display:block;opacity:1;filter:saturate(.88) brightness(.86)}
 [data-fg-in="up"]{transform:translate3d(0,13%,0)}
