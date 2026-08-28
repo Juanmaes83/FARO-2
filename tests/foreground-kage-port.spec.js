@@ -16,6 +16,17 @@ async function own(page,id){
     const top=scrollY+r.top+(r.height-innerHeight)/2;
     scrollTo(0,Math.max(0,top));
   },id);
+  await page.waitForTimeout(900);
+  const debug=await page.evaluate(id=>({
+    requested:id,
+    y:scrollY,
+    viewport:{w:innerWidth,h:innerHeight},
+    railActive:[...document.querySelectorAll('#rail button')].findIndex(x=>x.classList.contains('on')),
+    rects:Object.fromEntries(['hero','coast','keeper','stair','machine','beam','afterlight'].map(k=>{const e=document.getElementById(k),r=e?.getBoundingClientRect();return[k,r?{top:Math.round(r.top),bottom:Math.round(r.bottom),height:Math.round(r.height)}:null]})),
+    sky:[...document.querySelectorAll('#fg-sky .fg')].map(x=>({fg:x.dataset.fg,cls:x.className,parent:x.parentElement?.id})),
+    all:[...document.querySelectorAll('.fg')].map(x=>({fg:x.dataset.fg,cls:x.className,parent:x.parentElement?.id||x.parentElement?.className||x.parentElement?.tagName}))
+  }),id);
+  fs.writeFileSync(`qa-artifacts/block1/ownership-${id}-${debug.viewport.w}.json`,JSON.stringify(debug,null,2));
   await page.waitForFunction(id=>document.querySelector(`#fg-sky [data-fg="${id}"].fg-active`)!==null,id,{timeout:5000});
   await page.waitForTimeout(350);
 }
