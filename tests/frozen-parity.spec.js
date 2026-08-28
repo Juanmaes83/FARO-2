@@ -75,6 +75,8 @@ for (const viewport of [
     const ma = frozen.m;
     const mb = support.m;
 
+    fs.writeFileSync(`qa-artifacts/frozen-parity/${viewport.name}-metrics.json`, JSON.stringify({ frozen, support }, null, 2));
+
     expect(mb.scrollHeight).toBe(ma.scrollHeight);
     expect(mb.bodyHeight).toBe(ma.bodyHeight);
     expect(mb.canvas).toEqual(ma.canvas);
