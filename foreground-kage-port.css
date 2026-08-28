@@ -40,6 +40,9 @@
 [data-fg="afterlight"] .fg-wet-rocks{left:-7%;bottom:-88px;width:clamp(270px,31vw,540px)}
 [data-fg="afterlight"] .fg-coastal-grass{right:-9%;bottom:-114px;width:clamp(360px,43vw,760px)}
 
+/* Frozen Faro desktop footer resolves to 80px. Lock that component dimension explicitly so the port cannot lose a pixel to subpixel rounding. */
+@media(min-width:901px){.foot{min-height:80px}}
+
 @media(max-width:820px){
   [data-fg="coast"] .fg-sea-spray,[data-fg="keeper"] .fg-coastal-grass,[data-fg="machine"] .fg-lighthouse-wall,[data-fg="beam"] .fg-sea-spray,[data-fg="afterlight"] .fg-wet-rocks{display:none}
   [data-fg="coast"] .fg-coastal-basalt{left:-13%;bottom:-38px;width:min(77vw,420px)}
