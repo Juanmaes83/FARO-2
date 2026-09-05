@@ -36,7 +36,7 @@ jobs:
 
           async function verify(viewport, label) {
             const browser = await chromium.launch({ headless: true });
-            const context = await browser.newContext({ viewport, permissions: [] });
+            const context = await browser.newContext({ viewport, permissions: ['clipboard-read','clipboard-write'] });
             const page = await context.newPage();
             const errors = [];
             page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
@@ -51,7 +51,6 @@ jobs:
             assert(resourceUrls.some(u => u.includes(EXPECTED_SHA) && u.endsWith('/app.js')), 'Live review is not using expected immutable app.js SHA');
             assert(resourceUrls.some(u => u.includes(EXPECTED_SHA) && u.includes('foreground-kage-port.css')), 'Live review is not using expected foreground CSS SHA');
 
-            // Core cinematic navigation + Kage foreground ownership.
             await page.locator('#coast').scrollIntoViewIfNeeded();
             await page.waitForTimeout(900);
             await page.waitForFunction(() => !!document.querySelector('#fg-sky [data-fg="coast"].fg-active'), null, { timeout: 10000 });
@@ -61,7 +60,6 @@ jobs:
             await page.locator('#beam').scrollIntoViewIfNeeded();
             await page.waitForTimeout(900);
 
-            // Signal -> Another Light -> Listening Room.
             const trigger = page.locator('#support-trigger');
             await trigger.waitFor({ state: 'visible', timeout: 10000 });
             await trigger.click();
@@ -73,12 +71,10 @@ jobs:
             await page.locator('#phasea-overlay.open').waitFor({ state: 'visible', timeout: 10000 });
             assert.equal(await page.locator('#phasea-overlay').getAttribute('data-room'), 'listen');
 
-            // RECORD opens (mic capture itself intentionally not invoked in CI).
             await page.locator('#record-hero').click();
             await page.waitForFunction(() => document.querySelector('#phasea-overlay')?.getAttribute('data-room') === 'record');
             await page.locator('[data-mode="free"]').waitFor({ state: 'visible', timeout: 10000 });
 
-            // Internal BACK, Workshop, Radio, Learn.
             await page.locator('#phasea-back').click();
             await page.waitForFunction(() => document.querySelector('#phasea-overlay')?.getAttribute('data-room') === 'listen');
             await page.locator('[data-rnav="workshop"]').click();
@@ -90,7 +86,6 @@ jobs:
             await page.locator('#phasea-close').click();
             await page.waitForFunction(() => !document.querySelector('#phasea-overlay')?.classList.contains('open'));
 
-            // Mobile navigation must really open and navigate.
             if (viewport.width <= 500) {
               await page.locator('#burger').click();
               await page.waitForFunction(() => document.body.classList.contains('nav-open'));
