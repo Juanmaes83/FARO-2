@@ -1,0 +1,3 @@
+Phase III Playwright validation harness.
+Block 1 Kage foreground QA trigger.
+Deterministic foreground ownership runtime validation.

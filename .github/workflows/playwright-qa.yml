@@ -1,0 +1,186 @@
+name: Playwright QA
+
+on:
+  push:
+    branches: [phase-3-kage-architecture]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  faro-parity:
+    name: FARO PARITY
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - name: Checkout frozen Faro baseline from source repository
+        uses: actions/checkout@v4
+        with:
+          repository: Juanmaes83/MASTER-CLASS-HISTORIA-FARO-MEMORIA
+          ref: be966615347e8844bfcddf30034dd2b2a2c8330c
+          path: _frozen
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --save-dev @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve candidate and frozen Faro
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/faro-support-http.log 2>&1 &
+          python3 -m http.server 4174 --bind 127.0.0.1 --directory _frozen > /tmp/faro-frozen-http.log 2>&1 &
+          sleep 2
+      - name: Compare frozen Faro vs candidate
+        run: |
+          mkdir -p qa-artifacts
+          npx playwright test tests/frozen-parity.spec.js
+      - name: Upload parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: faro-parity-evidence
+          path: |
+            qa-artifacts/frozen-parity/
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
+  faro-smoke:
+    name: FARO SMOKE
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --save-dev @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/faro-support-http.log 2>&1 &
+          sleep 2
+      - name: Run Faro smoke
+        run: |
+          mkdir -p qa-artifacts
+          npx playwright test tests/lighthouse.spec.js
+      - name: Upload smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: faro-smoke-evidence
+          path: |
+            qa-artifacts/
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
+  phase-a-flow:
+    name: PHASE A HUMAN FLOW
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --save-dev @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/faro-phase-a-http.log 2>&1 &
+          sleep 2
+      - name: Run Phase A human route and room checks
+        run: |
+          mkdir -p qa-artifacts
+          npx playwright test tests/phase-a-record.spec.js
+      - name: Upload Phase A evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-a-flow-evidence
+          path: |
+            qa-artifacts/
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
+  phase-b1-workshop:
+    name: PHASE B1 PODCAST WORKSHOP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --save-dev @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/faro-phase-b1-http.log 2>&1 &
+          sleep 2
+      - name: Run Phase B1 local workshop checks
+        run: |
+          mkdir -p qa-artifacts
+          npx playwright test tests/phase-b1-workshop.spec.js
+      - name: Upload Phase B1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-b1-workshop-evidence
+          path: |
+            qa-artifacts/
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
+  support-core:
+    name: SUPPORT CORE
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --save-dev @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/faro-support-http.log 2>&1 &
+          sleep 2
+      - name: Run support-core interactions
+        run: |
+          mkdir -p qa-artifacts
+          npx playwright test tests/support-actions.spec.js
+      - name: Upload support evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-core-evidence
+          path: |
+            qa-artifacts/
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore

@@ -1,0 +1,13 @@
+{
+  "donor": "Juanmaes83/kage",
+  "strategy": "Kage alpha-preserving near-plane assets adapted for Atlantic Faro",
+  "assets": {
+    "coastal-basalt.webp": "basalt-stones.webp \u2014 dark/cool Atlantic grade",
+    "wet-rocks.webp": "derived from donor basalt silhouette with wet tonal response",
+    "coastal-grass.webp": "tall-grass.webp \u2014 desaturated coastal grade",
+    "cliff-edge.webp": "hill.webp \u2014 near-plane cliff grade",
+    "distant-headland.webp": "hill.webp \u2014 catalogued for later world-depth use",
+    "lighthouse-wall-fragment.webp": "temple-wall.webp \u2014 architectural neutralisation",
+    "sea-spray.webp": "new deterministic alpha artwork generated for Faro"
+  }
+}
