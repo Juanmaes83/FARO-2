@@ -50,7 +50,7 @@ jobs:
             const context = await browser.newContext({ viewport, permissions: ['clipboard-read','clipboard-write'] });
             const page = await context.newPage();
             const errors = [];
-            page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
+            page.on('pageerror', e => errors.push('PAGEERROR: ' + (e.stack || e.message)));
             page.on('console', m => { if (m.type() === 'error') errors.push('CONSOLE: ' + m.text()); });
 
             try {
