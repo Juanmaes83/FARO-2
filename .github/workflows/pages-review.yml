@@ -11,9 +11,6 @@ permissions:
   pages: write
   id-token: write
 
-automation:
-  enabled: true
-
 concurrency:
   group: faro-2-pages-review
   cancel-in-progress: true
