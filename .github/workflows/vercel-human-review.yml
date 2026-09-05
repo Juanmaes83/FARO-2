@@ -1,0 +1,127 @@
+name: Vercel Human Review QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [block-1-kage-foreground]
+    paths:
+      - '.github/workflows/vercel-human-review.yml'
+
+jobs:
+  live-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --save-dev playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify live Vercel review on desktop and mobile
+        env:
+          REVIEW_URL: https://faro-2-review.vercel.app/
+          EXPECTED_SHA: b677eac031fef88ea4dd49144f59ce6f6defe08e
+        run: |
+          cat > /tmp/verify-live.js <<'EOF'
+          const { chromium } = require('playwright');
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const REVIEW_URL = process.env.REVIEW_URL;
+          const EXPECTED_SHA = process.env.EXPECTED_SHA;
+          fs.mkdirSync('qa-artifacts/vercel-human-review', { recursive: true });
+
+          async function verify(viewport, label) {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext({ viewport, permissions: [] });
+            const page = await context.newPage();
+            const errors = [];
+            page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
+            page.on('console', m => { if (m.type() === 'error') errors.push('CONSOLE: ' + m.text()); });
+
+            const response = await page.goto(REVIEW_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+            assert(response && response.ok(), `Vercel ${label} HTTP failed: ${response && response.status()}`);
+            const iframe = page.locator('#faro');
+            await iframe.waitFor({ state: 'visible', timeout: 30000 });
+            const src = await iframe.getAttribute('src');
+            assert(src && src.includes(EXPECTED_SHA), `Review is not pinned to expected SHA: ${src}`);
+
+            await page.waitForFunction((sha) => {
+              const el = document.querySelector('#faro');
+              return el && el.src.includes(sha);
+            }, EXPECTED_SHA);
+
+            const frame = page.frames().find(f => f.url().includes(EXPECTED_SHA) && f.url().includes('storytelling.html'));
+            assert(frame, `FARO iframe did not load on ${label}`);
+            await frame.waitForLoadState('domcontentloaded');
+            await frame.waitForFunction(() => document.body && document.body.innerText.includes('THE LAST LIGHTHOUSE'), null, { timeout: 60000 });
+            await frame.waitForFunction(() => window.__FARO_QA__?.ready === true, null, { timeout: 60000 });
+
+            // Core cinematic navigation and foreground ownership.
+            await frame.locator('#coast').scrollIntoViewIfNeeded();
+            await frame.waitForTimeout(800);
+            await frame.waitForFunction(() => !!document.querySelector('#fg-sky [data-fg="coast"].fg-active'), null, { timeout: 10000 });
+            await frame.locator('#beam').scrollIntoViewIfNeeded();
+            await frame.waitForTimeout(800);
+
+            // Human-support flow: Signal -> Another Light -> Listening Room.
+            const trigger = frame.locator('#support-trigger');
+            await trigger.waitFor({ state: 'visible', timeout: 10000 });
+            await trigger.click();
+            await frame.locator('#copy-signal').waitFor({ state: 'visible', timeout: 10000 });
+            await frame.locator('#copy-signal').click();
+            await frame.locator('#answer-event.show').waitFor({ state: 'visible', timeout: 10000 });
+            await frame.locator('#phasea-answer-listen').waitFor({ state: 'visible', timeout: 10000 });
+            await frame.locator('#phasea-answer-listen').click();
+            await frame.locator('#phasea-overlay.open').waitFor({ state: 'visible', timeout: 10000 });
+            assert.equal(await frame.locator('#phasea-overlay').getAttribute('data-room'), 'listen');
+
+            // Record room opens.
+            await frame.locator('#record-hero').click();
+            await frame.waitForFunction(() => document.querySelector('#phasea-overlay')?.getAttribute('data-room') === 'record');
+            await frame.locator('[data-mode="free"]').waitFor({ state: 'visible' });
+
+            // Back to LISTEN, then Workshop, Radio, Learn.
+            await frame.locator('#phasea-back').click();
+            await frame.waitForFunction(() => document.querySelector('#phasea-overlay')?.getAttribute('data-room') === 'listen');
+            await frame.locator('[data-rnav="workshop"]').click();
+            await frame.locator('.b1-home').waitFor({ state: 'visible', timeout: 10000 });
+            await frame.locator('[data-rnav="radio"]').click();
+            await frame.locator('.broadcast-console').waitFor({ state: 'visible', timeout: 10000 });
+            await frame.locator('[data-rnav="learn"]').click();
+            await frame.locator('.learning-route').waitFor({ state: 'visible', timeout: 10000 });
+            await frame.locator('#phasea-close').click();
+            await frame.waitForFunction(() => !document.querySelector('#phasea-overlay')?.classList.contains('open'));
+
+            // Mobile menu is actually operable.
+            if (viewport.width <= 500) {
+              await frame.locator('#burger').click();
+              await frame.waitForFunction(() => document.body.classList.contains('nav-open'));
+              await frame.locator('#navlinks a[href="#keeper"]').click();
+              await frame.waitForTimeout(600);
+            }
+
+            await page.screenshot({ path: `qa-artifacts/vercel-human-review/${label}.png`, fullPage: false });
+            fs.writeFileSync(`qa-artifacts/vercel-human-review/${label}-errors.json`, JSON.stringify(errors, null, 2));
+            assert.equal(errors.length, 0, `${label} console/page errors:\n${errors.join('\n')}`);
+            await browser.close();
+          }
+
+          (async () => {
+            await verify({ width: 1440, height: 1000 }, 'desktop-1440x1000');
+            await verify({ width: 390, height: 844 }, 'mobile-390x844');
+            console.log('VERCEL HUMAN REVIEW QA: PASS desktop + mobile');
+          })().catch(err => { console.error(err); process.exit(1); });
+          EOF
+          node /tmp/verify-live.js
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-human-review-evidence
+          path: qa-artifacts/vercel-human-review/
+          if-no-files-found: ignore
